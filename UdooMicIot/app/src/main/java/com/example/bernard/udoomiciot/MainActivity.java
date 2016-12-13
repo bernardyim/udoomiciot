@@ -13,20 +13,27 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.github.nkzawa.socketio.client.IO;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.Socket;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 
 import static android.os.SystemClock.uptimeMillis;
 
 public class MainActivity extends AppCompatActivity {
     final static int udooID = 2;
-    final static String herokuUrl = "http://www.dummyurl12341515.com";
+    final static String localServerIP = "http://10.13.36.34:33";
 
     private MediaRecorder mediaRecorder = null;
+    private com.github.nkzawa.socketio.client.Socket socketToServer;
 
     public void start(){
         if (mediaRecorder == null){
@@ -39,9 +46,13 @@ public class MainActivity extends AppCompatActivity {
                 mediaRecorder.prepare();
                 mediaRecorder.start();
                 mediaRecorder.getMaxAmplitude();
+                socketToServer = IO.socket(localServerIP);
+                socketToServer.connect();
             } catch (IllegalStateException e) {
                 e.printStackTrace();
             } catch (IOException e) {
+                e.printStackTrace();
+            } catch (URISyntaxException e) {
                 e.printStackTrace();
             }
 
@@ -76,25 +87,48 @@ public class MainActivity extends AppCompatActivity {
         ampData.setText(input);
     }
 
-    private void updateServer(double aveAmplitude){
-        Socket socket = null;
-        OutputStream outputStream;
-        try {
-            socket = new Socket(herokuUrl, 80);
-            String udoomsg = "time="+uptimeMillis()+";aveAmp="+aveAmplitude;
-            //send(String identifier) -> Open socket connection to url specified with identifier, and the parameters obtained in getTime and getAveAmp
-            /*
-            outputStream = socket.getOutputStream();
-            PrintStream printStream = new PrintStream(outputStream);
-            printStream.print(udoomsg);
-            printStream.close();
-            */
-            //update to textview that which we published
-            TextView logData = (TextView)findViewById(R.id.logData);
-            logData.setText(udoomsg);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private void updateServer(final double aveAmplitude, final double currentAmp){
+        Thread t = new Thread() {
+            @Override
+            public void run() {
+                System.out.println("Executing socket call");
+
+                try {
+                    JSONObject data = new JSONObject();
+                    data.put("name",udooID);
+                    data.put("aveamp",aveAmplitude);
+                    data.put("curamp",currentAmp);
+                    socketToServer.emit("newData", data);
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                /*
+                //old-school socket method
+                Socket socket = null;
+                OutputStream outputStream;
+                try {
+                socket = new Socket(localServerIP, 33);
+                String udoomsg = "time="+uptimeMillis()+";aveAmp="+aveAmp;
+                //send(String identifier) -> Open socket connection to url specified with identifier, and the parameters obtained in getTime and getAveAmp
+
+                outputStream = socket.getOutputStream();
+                PrintStream printStream = new PrintStream(outputStream);
+                printStream.print(udoomsg);
+                printStream.close();
+
+                //update to textview that which we published
+                //TextView logData = (TextView)findViewById(R.id.logData);
+                //logData.setText(udoomsg);
+                    System.out.println("finished, closing");
+                } catch (IOException e) {
+                e.printStackTrace();
+                }
+                */
+            }
+        };
+        t.start();
+
     }
 
     @Override
@@ -129,7 +163,8 @@ public class MainActivity extends AppCompatActivity {
                                 }
                                 double dbOutput = toDecibel(output);
                                 updateAmplitude(String.valueOf(dbOutput));
-                                //updateServer(dbOutput);
+                                updateServer(dbOutput, toDecibel(amp));
+
                             }
                         });
 
@@ -144,6 +179,13 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    public void onDestroy(){
+        super.onDestroy();
+
+        socketToServer.disconnect();
+        socketToServer.off();
+    }
 
     /////////////////////////////////////////////
 
