@@ -10,6 +10,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -29,8 +30,8 @@ import java.util.ArrayList;
 import static android.os.SystemClock.uptimeMillis;
 
 public class MainActivity extends AppCompatActivity {
-    final static int udooID = 2;
-    final static String localServerIP = "http://10.21.113.213:33";
+    final static int udooID = 1;
+    static String localServerIP = "http://10.13.36.34:33";
 
     private MediaRecorder mediaRecorder = null;
     private com.github.nkzawa.socketio.client.Socket socketToServer;
@@ -92,7 +93,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 System.out.println("Executing socket call");
-
+                System.out.println("ip is" + localServerIP);
+                System.out.println("Socket is "+ socketToServer.toString());
                 try {
                     JSONObject data = new JSONObject();
                     data.put("name",udooID);
@@ -131,6 +133,58 @@ public class MainActivity extends AppCompatActivity {
         t.start();
 
     }
+    public void updateIP(View v){
+        EditText newIPEditText = (EditText) findViewById(R.id.newIpEditText);
+        localServerIP = newIPEditText.getText().toString();
+        try {
+            start();
+
+            final ArrayList<Double> ampBuffer = new ArrayList<>();
+
+            Thread t = new Thread(){
+                @Override
+                public void run(){
+                    try{
+                        while(!isInterrupted()){
+                            Thread.sleep(200);
+                            runOnUiThread(new Runnable(){
+                                @Override
+                                public void run(){
+                                    double amp = getAmplitude();
+                                    double output;
+                                    ampBuffer.add(amp);
+                                    if(ampBuffer.size()<6){
+                                        output = ampBuffer.get(ampBuffer.size()-1);
+                                    } else {
+                                        ampBuffer.remove(0);
+                                        output = getAveAmplitude(ampBuffer);
+                                    }
+                                    double dbOutput = toDecibel(output);
+                                    updateAmplitude(String.valueOf(dbOutput));
+                                    updateServer(dbOutput, toDecibel(amp));
+
+                                }
+                            });
+
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+
+            t.start();
+
+
+
+            String message = "IP Address: " + localServerIP;
+
+            TextView ipadd = (TextView) findViewById(R.id.ipadd);
+            ipadd.setText(message);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -138,45 +192,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         TextView deviceData = (TextView)findViewById(R.id.deviceData);
-        deviceData.setText(Integer.toString(udooID));
+        deviceData.setText("Udoo ID: "+Integer.toString(udooID));
 
-        start();
-
-        final ArrayList<Double> ampBuffer = new ArrayList<>();
-
-        Thread t = new Thread(){
-            @Override
-            public void run(){
-                try{
-                    while(!isInterrupted()){
-                        Thread.sleep(200);
-                        runOnUiThread(new Runnable(){
-                            @Override
-                            public void run(){
-                                double amp = getAmplitude();
-                                double output;
-                                ampBuffer.add(amp);
-                                if(ampBuffer.size()<6){
-                                    output = ampBuffer.get(ampBuffer.size()-1);
-                                } else {
-                                    ampBuffer.remove(0);
-                                    output = getAveAmplitude(ampBuffer);
-                                }
-                                double dbOutput = toDecibel(output);
-                                updateAmplitude(String.valueOf(dbOutput));
-                                updateServer(dbOutput, toDecibel(amp));
-
-                            }
-                        });
-
-                    }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        };
-
-        t.start();
 
         String message = "IP Address: " + localServerIP;
 
