@@ -30,7 +30,7 @@ import static android.os.SystemClock.uptimeMillis;
 
 public class MainActivity extends AppCompatActivity {
     final static int udooID = 2;
-    final static String localServerIP = "http://10.13.36.34:33";
+    final static String localServerIP = "http://10.21.113.213:33";
 
     private MediaRecorder mediaRecorder = null;
     private com.github.nkzawa.socketio.client.Socket socketToServer;
@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
                 mediaRecorder.getMaxAmplitude();
                 socketToServer = IO.socket(localServerIP);
                 socketToServer.connect();
+                socketToServer.emit("newSubject", udooID);
             } catch (IllegalStateException e) {
                 e.printStackTrace();
             } catch (IOException e) {
@@ -55,7 +56,6 @@ public class MainActivity extends AppCompatActivity {
             } catch (URISyntaxException e) {
                 e.printStackTrace();
             }
-
         }
     }
 
@@ -101,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
                     socketToServer.emit("newData", data);
 
                 } catch (JSONException e) {
+                    System.out.println("Error");
                     e.printStackTrace();
                 }
                 /*
@@ -176,6 +177,11 @@ public class MainActivity extends AppCompatActivity {
         };
 
         t.start();
+
+        String message = "IP Address: " + localServerIP;
+
+        TextView ipadd = (TextView) findViewById(R.id.ipadd);
+        ipadd.setText(message);
 
     }
 
