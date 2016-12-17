@@ -30,8 +30,8 @@ import java.util.ArrayList;
 import static android.os.SystemClock.uptimeMillis;
 
 public class MainActivity extends AppCompatActivity {
-    final static int udooID = 1;
-    static String localServerIP = "http://10.13.36.34:33";
+    final static int udooID = 1 ;
+    static String localServerIP = "http://10.21.115.157:33";
 
     private MediaRecorder mediaRecorder = null;
     private com.github.nkzawa.socketio.client.Socket socketToServer;
